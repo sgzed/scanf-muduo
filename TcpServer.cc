@@ -20,15 +20,11 @@
 #include <stdio.h>
 #include <sys/epoll.h>
 
+#include <boost/bind.hpp>
 #include <iostream>
 using std::cout;
 using std::endl;
 using std::vector;
-
-#define MAX_LINE 100
-#define MAX_EVENTS 500
-#define RESERVE_EVENTS 16 
-#define MAX_LISTENFD 5
 
 bool setNonblock(int fd)
 {
@@ -41,118 +37,105 @@ bool setNonblock(int fd)
 int TcpServer::createAndListen()
 {
 	int on=1;
-	int listenfd = socket(AF_INET,SOCK_STREAM,0);
+	int _listenfd = socket(AF_INET,SOCK_STREAM,0);
 	
-	assert(setNonblock(listenfd)==true);
+	assert(setNonblock(_listenfd)==true);
 	
-	 setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));  
+	 setsockopt(_listenfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));  
 
 	struct sockaddr_in servaddr;
 	servaddr.sin_family = AF_INET;
-	servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+	servaddr.sin_addr.s_addr = inet_addr("192.168.70.128");
 	servaddr.sin_port = htons(2018);
 		
-	if(-1 == bind(listenfd,(struct sockaddr*)&servaddr,sizeof(servaddr)))
+	if(-1 == bind(_listenfd,(struct sockaddr*)&servaddr,sizeof(servaddr)))
 	{
 		cout << "bind err, errno" << errno << endl;
 	}
 
-	if(-1 == listen(listenfd,MAX_LISTENFD))
+	if(-1 == listen(_listenfd,MAX_LISTENFD))
 	{
 		cout << "listen err, errno" << errno << endl;
 		exit(-1);
 	}
-	return listenfd; 
+
+	_listen = Channel(_epollfd,_listenfd);
+	_listen.enableReading();
+	return _listenfd; 
 }
 
 
+void TcpServer::setConnectionCallback(const ConnectionCallback& cb)
+{
+	_listen.setReadCallback(boost::bind(cb,&_listen));
+}
+
+void TcpServer::setMessageCallback(const MessageCallback& cb)
+{
+	_messageCallback = cb;	
+}
+
 void TcpServer::start()
 {
-	int listenfd,connfd,sockfd;
+	int connfd,sockfd;
 	
-	char line[MAX_LINE];
-
 	struct sockaddr_in peeraddr;
 	socklen_t perrlen = sizeof perrlen;
 
-	int epollfd = epoll_create1(EPOLL_CLOEXEC);
+	_epollfd = epoll_create1(EPOLL_CLOEXEC);
 
-	if(epollfd<0)
+	if(_epollfd<0)
 	{
 		cout << "epoll_create err,errno:" << errno << endl;
 		exit(-1);
 	}
 
-	listenfd = createAndListen();
+	cout << "listen fd : "<< createAndListen() << endl;
 	
-	struct epoll_event event;
-	vector<struct epoll_event> evs(RESERVE_EVENTS);
-	//evs.reserve(RESERVE_EVENTS);
-	
-	event.data.fd = listenfd;
-	event.events = EPOLLIN;
-	epoll_ctl(epollfd,EPOLL_CTL_ADD,listenfd,&event);
-
-	int ret,nrecv;
+	int ret;
 
 	while(1)
 	{
-		ret = epoll_wait(epollfd,&*evs.begin(),static_cast<int>(evs.size()),-1);
-	
+		ret = epoll_wait(_epollfd,&*_events.begin(),static_cast<int>(_events.size()),-1);
+
 		if(-1 == ret)
 		{
 			perror("epoll_wait");
 			exit(-1);
 		}
 		
+		int _listenfd = _listen.getFd();
 		for(int i=0;i<ret;++i)
 		{
-			if(evs[i].data.fd == listenfd)
+			sockfd =((Channel*)_events[i].data.ptr)->getFd();
+			if(sockfd == _listenfd)
 			{
-				connfd = accept(listenfd,(sockaddr*)&peeraddr,&perrlen);
+				connfd = accept(_listenfd,(sockaddr*)&peeraddr,&perrlen);
 				if(connfd>0)
 				{
 					cout << "new connection from [" 
 						<< inet_ntoa(peeraddr.sin_addr)
 						<< ":"  << ntohs(peeraddr.sin_port) << "] "
 						<< "accept fd:" << connfd << endl;
-					setNonblock(connfd);
-					event.events = EPOLLIN;
-					event.data.fd = connfd;
-					epoll_ctl(epollfd,EPOLL_CTL_ADD,connfd,&event);
+					Channel* chl = new Channel(_epollfd,connfd);
+					chl->enableReading();
+					chl->setReadCallback(boost::bind(_messageCallback,chl));
+					_channels[connfd]=chl;
 				}
 				else
 				{
 					cout << "accept err, errno:" << errno << endl;
 				}
 			}
-			else if(evs[i].events&EPOLLIN)
+			else 
 			{
-				sockfd = evs[i].data.fd;
-				bzero(line,MAX_LINE);
-				
-				if((nrecv=read(sockfd,line,sizeof line))<0)
+				if(_channels.find(sockfd)== _channels.end())
 				{
-					if(errno ==ECONNRESET )
-					{
-						cout << "ECONNREST closed socket fd:" << sockfd << endl;  
-						close(sockfd);
-					}
-					else
-					cout << "sock fd" << sockfd <<  "read err ,errno:" << errno << endl; 
-				}
-				else if(nrecv ==0)
-				{
-						cout << "peer client closed socket fd:" << sockfd << endl; 
-						close(sockfd);
-				}
-				else
-				{
-					cout << "receive " << nrecv << " bytes data from " << sockfd << endl;
-					if(write(sockfd,line,nrecv)!=nrecv)
-						cout << "err: not finished one time" << endl;
-				}
-
+					cout << "no sock fd found" << endl;
+					exit(EXIT_FAILURE);
+				}	
+				_channels[sockfd]->setRevent(_events[i].events);
+				_channels[sockfd]->handleEvent();
 			}
 		}
 	
