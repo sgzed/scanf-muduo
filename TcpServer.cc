@@ -26,48 +26,9 @@ using std::cout;
 using std::endl;
 using std::vector;
 
-bool setNonblock(int fd)
-{
-	int flag = fcntl(fd,F_GETFL);
-	flag |= O_NONBLOCK;
-	return fcntl(fd,F_SETFL,flag)!=-1;
-}
-
-
-int TcpServer::createAndListen()
-{
-	int on=1;
-	int _listenfd = socket(AF_INET,SOCK_STREAM,0);
-	
-	assert(setNonblock(_listenfd)==true);
-	
-	 setsockopt(_listenfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));  
-
-	struct sockaddr_in servaddr;
-	servaddr.sin_family = AF_INET;
-	servaddr.sin_addr.s_addr = inet_addr("192.168.70.128");
-	servaddr.sin_port = htons(2018);
-		
-	if(-1 == bind(_listenfd,(struct sockaddr*)&servaddr,sizeof(servaddr)))
-	{
-		cout << "bind err, errno" << errno << endl;
-	}
-
-	if(-1 == listen(_listenfd,MAX_LISTENFD))
-	{
-		cout << "listen err, errno" << errno << endl;
-		exit(-1);
-	}
-
-	_listen = Channel(_epollfd,_listenfd);
-	_listen.enableReading();
-	return _listenfd; 
-}
-
-
 void TcpServer::setConnectionCallback(const ConnectionCallback& cb)
 {
-	_listen.setReadCallback(boost::bind(cb,&_listen));
+	//_acceptor.setReadCallback(boost::bind(cb,_acceptor));
 }
 
 void TcpServer::setMessageCallback(const MessageCallback& cb)
@@ -77,11 +38,6 @@ void TcpServer::setMessageCallback(const MessageCallback& cb)
 
 void TcpServer::start()
 {
-	int connfd,sockfd;
-	
-	struct sockaddr_in peeraddr;
-	socklen_t perrlen = sizeof perrlen;
-
 	_epollfd = epoll_create1(EPOLL_CLOEXEC);
 
 	if(_epollfd<0)
@@ -90,10 +46,11 @@ void TcpServer::start()
 		exit(-1);
 	}
 
-	cout << "listen fd : "<< createAndListen() << endl;
-	
-	int ret;
+	_acceptor = shared_ptr<Acceptor>(new Acceptor(this,_epollfd));
 
+	_acceptor->start();
+
+	int ret;
 	while(1)
 	{
 		ret = epoll_wait(_epollfd,&*_events.begin(),static_cast<int>(_events.size()),-1);
@@ -104,43 +61,44 @@ void TcpServer::start()
 			exit(-1);
 		}
 		
-		int _listenfd = _listen.getFd();
 		for(int i=0;i<ret;++i)
 		{
-			sockfd =((Channel*)_events[i].data.ptr)->getFd();
-			if(sockfd == _listenfd)
+			int sockfd = ((Channel*)_events[i].data.ptr)->getFd();
+			if(_acceptor->fd() == sockfd)
 			{
-				connfd = accept(_listenfd,(sockaddr*)&peeraddr,&perrlen);
-				if(connfd>0)
-				{
-					cout << "new connection from [" 
-						<< inet_ntoa(peeraddr.sin_addr)
-						<< ":"  << ntohs(peeraddr.sin_port) << "] "
-						<< "accept fd:" << connfd << endl;
-					Channel* chl = new Channel(_epollfd,connfd);
-					chl->enableReading();
-					chl->setReadCallback(boost::bind(_messageCallback,chl));
-					_channels[connfd]=chl;
-				}
-				else
-				{
-					cout << "accept err, errno:" << errno << endl;
-				}
+				_acceptor->handleRead();	
 			}
 			else 
 			{
-				if(_channels.find(sockfd)== _channels.end())
+				if(_connections.find(sockfd)== _connections.end())
 				{
-					cout << "no sock fd found" << endl;
+					cout << "no sock fd found"  ;
 					exit(EXIT_FAILURE);
-				}	
-				_channels[sockfd]->setRevent(_events[i].events);
-				_channels[sockfd]->handleEvent();
+				}
+				cout << "sockfd " << sockfd << " receive message" << endl;
+				_connections[sockfd]->getChannel()->setRevent(_events[i].events);
+				_connections[sockfd]->getChannel()->handleEvent();
 			}
 		}
 	
 	}
 }
+
+
+void TcpServer::newConnection(int connfd)
+{
+	shared_ptr<TcpConnection> conn(new TcpConnection(_epollfd,connfd));
+		
+	conn->setMessageCallback(boost::bind(_messageCallback,_1));
+		
+	_connections[connfd] = conn;
+
+}
+
+
+
+
+
 
 
 

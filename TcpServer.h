@@ -8,7 +8,8 @@
 #ifndef __WD_TCPSERVER_H__
 #define __WD_TCPSERVER_H__
 
-#include "Channel.h"
+#include "TcpConnection.h"
+#include "Acceptor.h"
 #include <sys/epoll.h>
 #include <map>
 #include <vector>
@@ -16,20 +17,18 @@
 using std::map;
 using std::vector;
 
-#define MAX_LINE 100
 #define MAX_EVENTS 500
 #define RESERVE_EVENTS 16 
-#define MAX_LISTENFD 5
 
+class Acceptor;
 class TcpServer
 {
-typedef boost::function<void(Channel*)> ConnectionCallback;
-typedef boost::function<void(Channel*)> MessageCallback;
+typedef boost::function<void(Acceptor*)> ConnectionCallback;
+typedef boost::function<void(shared_ptr<TcpConnection>)> MessageCallback;
 
 public:
 	TcpServer()
 		:_epollfd(-1),
-		_listen(_epollfd,-1),
 		_messageCallback(NULL)
 	{
 		_events.resize(RESERVE_EVENTS);
@@ -42,19 +41,19 @@ public:
 
 	void setMessageCallback(const MessageCallback& cb);
 				
-	
+	void newConnection(int sockfd);
+
 	void start();
 
 private:
-	int createAndListen();
-
-private:
 	int _epollfd;
-	Channel _listen;
+//	Channel _listen;
 
 	vector<struct epoll_event> _events;
 
-	map<int,Channel*> _channels;
+	map<int,shared_ptr<TcpConnection>> _connections;
+
+	shared_ptr<Acceptor> _acceptor;
 
 	MessageCallback _messageCallback;
 };

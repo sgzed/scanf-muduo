@@ -12,6 +12,14 @@
 using std::cout;
 using std::endl;
 
+
+bool setNonblock(int fd)
+{
+	int flag = fcntl(fd,F_GETFL);
+	flag |= O_NONBLOCK;
+	return fcntl(fd,F_SETFL,flag)!=-1;
+}
+
 Channel::Channel(int epollfd,int fd)
 	:_epollfd(epollfd),
 	 _fd(fd),
@@ -37,6 +45,7 @@ void Channel::enableReading()
 	int ret = epoll_ctl(_epollfd,EPOLL_CTL_ADD,_fd,&event);
 	if(ret < 0)
 	{
+		cout << "fd " << _fd << endl;
 		perror("epoll_ctl");
 	}
 }

@@ -9,6 +9,11 @@
 
 #include <boost/function.hpp>
 #include <boost/noncopyable.hpp>
+#include <unistd.h>
+#include <fcntl.h>
+#include "Util.h"
+
+extern bool setNonblock(int fd);
 
 class Channel 
 {
@@ -23,6 +28,7 @@ public:
 	{
 		_readCallback = cb;
 	}
+
 	int getFd();
 
 	void handleEvent();

@@ -5,6 +5,7 @@
 ///
 
 #include "TcpServer.h"
+#include "TcpConnection.h"
 #include <unistd.h>
 #include <iostream>
 #include <boost/bind.hpp>
@@ -12,7 +13,7 @@
 using std::cout;
 using std::endl;
 
-void onMessage(Channel* chl);
+void onMessage(shared_ptr<TcpConnection> );
 
 int main()
 {
@@ -24,12 +25,13 @@ int main()
 
 }
 
-void onMessage(Channel* chl)
+void onMessage(shared_ptr<TcpConnection> pconn)
 {
 	int nrecv;
 
 	char line[512];
-	int sockfd = chl->getFd();
+	int sockfd = pconn->getChannel()->getFd();
+	cout << "sockfd = " << sockfd << endl;
 	if((nrecv=read(sockfd,line,sizeof line))<0)
 	{
 		if(errno ==ECONNRESET )
@@ -38,7 +40,7 @@ void onMessage(Channel* chl)
 			close(sockfd);
 		}
 		else
-			cout << "sock fd" << sockfd <<  "read err ,errno:" << errno << endl; 
+			perror("read");
 	}
 	else if(nrecv ==0)
 	{
