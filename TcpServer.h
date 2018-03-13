@@ -28,8 +28,8 @@ typedef boost::function<void(Acceptor*)> ConnectionCallback;
 typedef boost::function<void(shared_ptr<TcpConnection>)> MessageCallback;
 
 public:
-	TcpServer()
-		:_loop(new EventLoop),
+	TcpServer(EventLoop* loop)
+		:_loop(loop),
 		_messageCallback(NULL)
 	{
 	}

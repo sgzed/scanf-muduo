@@ -41,10 +41,20 @@ public:
 		return _pChannel;
 	}
 
+	void send(const char*);
+
+	char* getInputBuffer()
+	{
+		return inputbuffer;
+	}
+
 private:
 	EventLoop* _loop;
 	int _sockfd;
 	shared_ptr<Channel> _pChannel;
+	
+	char inputbuffer[MAX_LINE];
+	char outputbuffer[MAX_LINE];
 
 	ConnectionCallback _connectionCallback;
 	MessageCallback   _messageCallback;

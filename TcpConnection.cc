@@ -7,6 +7,9 @@
 #include "TcpConnection.h"
 #include <iostream>
 #include <boost/bind.hpp>
+#include <sys/types.h>
+#include <sys/socket.h>
+
 using std::endl;
 using std::cout;
 
@@ -25,24 +28,33 @@ TcpConnection::TcpConnection(EventLoop* loop,int sockfd)
 
 void TcpConnection::handleRead()
 {
-//	char line[MAX_LINE];
-//	size_t n = read(_pChannel->getFd(),line,MAX_LINE);
-//
-//	if(n>0)
-//	{
-//		_messageCallback(shared_from_this());
-//	}
-//	else if(n==0)
-//	{
-//		close(_pChannel->getFd());
-//	}
-//	else
-//	{
-//		cout << "read err " << endl ; 	
-//	}
-	_messageCallback(shared_from_this());
+
+	size_t n = read(_pChannel->getFd(),inputbuffer,MAX_LINE);
+
+	if(n>0)
+	{
+		_messageCallback(shared_from_this());
+	}
+	else if(n==0)
+	{
+		cout << "client fd:" << _pChannel->getFd() << " close !" << endl;
+		close(_pChannel->getFd());
+	}
+	else
+	{
+		perror("read");
+	}
 }
 
 
+void TcpConnection::send(const char* buffer)
+{
+	size_t n = ::send(_pChannel->getFd(),buffer,strlen(buffer),0);
+	
+	if(n<strlen(buffer))
+	{
+		cout << "can't send one time" << endl;
+	}
+}
 
 

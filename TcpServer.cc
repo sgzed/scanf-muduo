@@ -44,7 +44,7 @@ void TcpServer::start()
 
 	_acceptor->start();
 
-	_loop->loop();
+	//_loop->loop();
 }
 
 
