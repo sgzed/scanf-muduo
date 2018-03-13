@@ -10,6 +10,7 @@
 #include "Channel.h"
 #include <memory>
 #include <boost/function.hpp>
+#include "EventLoop.h"
 using std::shared_ptr;
 
 #define MAX_LINE 512
@@ -20,7 +21,7 @@ typedef boost::function<void (shared_ptr<TcpConnection>)> ConnectionCallback;
 typedef boost::function<void (shared_ptr<TcpConnection>)> MessageCallback;
 
 public:
-	TcpConnection(int epollfd,int sockd);
+	TcpConnection(EventLoop* loop,int sockd);
 
 	~TcpConnection()
 	{}
@@ -41,7 +42,7 @@ public:
 	}
 
 private:
-	int _epollfd;
+	EventLoop* _loop;
 	int _sockfd;
 	shared_ptr<Channel> _pChannel;
 

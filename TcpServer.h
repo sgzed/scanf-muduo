@@ -9,6 +9,7 @@
 #define __WD_TCPSERVER_H__
 
 #include "TcpConnection.h"
+#include "EventLoop.h"
 #include "Acceptor.h"
 #include <sys/epoll.h>
 #include <map>
@@ -28,10 +29,9 @@ typedef boost::function<void(shared_ptr<TcpConnection>)> MessageCallback;
 
 public:
 	TcpServer()
-		:_epollfd(-1),
+		:_loop(new EventLoop),
 		_messageCallback(NULL)
 	{
-		_events.resize(RESERVE_EVENTS);
 	}
 
 	~TcpServer()
@@ -46,10 +46,8 @@ public:
 	void start();
 
 private:
-	int _epollfd;
 //	Channel _listen;
-
-	vector<struct epoll_event> _events;
+	EventLoop* _loop;	
 
 	map<int,shared_ptr<TcpConnection>> _connections;
 

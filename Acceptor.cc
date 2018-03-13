@@ -6,7 +6,6 @@
 
 #include "Acceptor.h"
 
-#include "Util.h"
 #include <sys/socket.h>
 #include <sys/epoll.h>
 #include <arpa/inet.h>
@@ -54,7 +53,9 @@ int Acceptor::createAndListen()
 	}
 	setNonblock(_listenfd);
 	cout << "listenfd " << _listenfd << endl;
-	_acceptor = std::shared_ptr<Channel> (new Channel(_epollfd,_listenfd));
+	_acceptor = std::shared_ptr<Channel> (new Channel(_loop,_listenfd));
+	auto& iter =_loop->_poller->getChannels();
+	iter[_listenfd] = _acceptor;
 	return _listenfd; 
 }
 

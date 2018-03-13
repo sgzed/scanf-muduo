@@ -11,16 +11,18 @@
 #include <boost/noncopyable.hpp>
 #include <unistd.h>
 #include <fcntl.h>
-#include "Util.h"
+#include "EventLoop.h"
 
 extern bool setNonblock(int fd);
 
-class Channel 
+class EventLoop;
+
+class Channel : public std::enable_shared_from_this<Channel>
 {
 public: 
 	typedef boost::function<void()> EventCallback;
 	
-	Channel(int epollfd,int fd);
+	Channel(EventLoop *loop,int fd);
 
 	~Channel();
 
@@ -38,7 +40,7 @@ public:
 	void setRevent(int);
 
 private:
-	int _epollfd;
+	EventLoop* _loop;
 	int _fd;
 	int _events;
 	int _revents;

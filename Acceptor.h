@@ -19,9 +19,9 @@ class Acceptor
 {
 	typedef boost::function<void(shared_ptr<Acceptor>)> ConnectionCallback;
 public:
-	Acceptor(TcpServer* server,int epollfd,const char* ip="127.0.0.1",short port=2018):
+	Acceptor(TcpServer* server,EventLoop *loop,const char* ip="127.0.0.1",short port=2018):
 		_server(server),
-		_epollfd(epollfd),
+		_loop(loop),
 		_ip(ip),
 		_port(port),
 		_listenfd(-1),
@@ -45,7 +45,7 @@ private:
 	int createAndListen();
 
 	TcpServer* _server;
-	int _epollfd;
+	EventLoop *_loop;
 	const char * _ip;
 	short _port;
 	int _listenfd;

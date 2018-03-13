@@ -10,13 +10,13 @@
 using std::endl;
 using std::cout;
 
-TcpConnection::TcpConnection(int epollfd,int sockfd)
-	:_epollfd(epollfd),_sockfd(sockfd)
+TcpConnection::TcpConnection(EventLoop* loop,int sockfd)
+	:_loop(loop),_sockfd(sockfd)
 {
 	if(setNonblock(sockfd)==false)
 		cout << "setNonblock false" << endl;
 	
-	_pChannel = shared_ptr<Channel>(new Channel(_epollfd,_sockfd));
+	_pChannel = shared_ptr<Channel>(new Channel(_loop,_sockfd));
 
 	_pChannel->setReadCallback(boost::bind(&TcpConnection::handleRead,this));
 

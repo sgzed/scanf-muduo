@@ -20,8 +20,8 @@ bool setNonblock(int fd)
 	return fcntl(fd,F_SETFL,flag)!=-1;
 }
 
-Channel::Channel(int epollfd,int fd)
-	:_epollfd(epollfd),
+Channel::Channel(EventLoop* loop,int fd)
+	:_loop(loop),
 	 _fd(fd),
 	 _events(0),
 	 _revents(0),
@@ -42,7 +42,7 @@ void Channel::enableReading()
 	struct epoll_event event;
 	event.data.ptr = this;
 	event.events = _events;
-	int ret = epoll_ctl(_epollfd,EPOLL_CTL_ADD,_fd,&event);
+	int ret = epoll_ctl(_loop->getEpollFd(),EPOLL_CTL_ADD,_fd,&event);
 	if(ret < 0)
 	{
 		cout << "fd " << _fd << endl;
