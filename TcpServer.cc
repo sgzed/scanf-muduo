@@ -38,8 +38,6 @@ void TcpServer::setMessageCallback(const MessageCallback& cb)
 
 void TcpServer::start()
 {
-
-
 	_acceptor = shared_ptr<Acceptor>(new Acceptor(this,_loop));
 
 	_acceptor->start();
@@ -55,7 +53,7 @@ void TcpServer::newConnection(int connfd)
 	auto& iter = _loop->_poller->getChannels();
 	iter[connfd] = conn->getChannel();
 
-	conn->setMessageCallback(boost::bind(_messageCallback,_1));
+	conn->setMessageCallback(boost::bind(_messageCallback,_1,_2));
 		
 	_connections[connfd] = conn;
 

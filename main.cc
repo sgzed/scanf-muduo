@@ -5,6 +5,7 @@
 ///
 
 #include "TcpServer.h"
+#include "Buffer.h"
 #include "TcpConnection.h"
 #include <unistd.h>
 #include <iostream>
@@ -13,7 +14,7 @@
 using std::cout;
 using std::endl;
 
-void onMessage(shared_ptr<TcpConnection> );
+void onMessage(shared_ptr<TcpConnection> pconn,Buffer* buffer);
 
 int main()
 {
@@ -21,13 +22,16 @@ int main()
 	EventLoop loop;
 
 	TcpServer echo(&loop);
-	echo.setMessageCallback(boost::bind(onMessage,_1));
+	echo.setMessageCallback(boost::bind(&onMessage,_1,_2));
 
 	echo.start();
 	loop.loop();
 }
 
-void onMessage(shared_ptr<TcpConnection> pconn)
+void onMessage(shared_ptr<TcpConnection> pconn,Buffer* buffer)
 {
-	pconn->send(pconn->getInputBuffer());
+	string msg(buffer->retrieveAllAsString());
+
+	cout << pconn->getChannel()->getFd() << " echo " << msg.size() << " bytes" << endl;
+	pconn->send(msg);
 }

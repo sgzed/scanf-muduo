@@ -8,17 +8,17 @@
 #define __WD_TCPCONNECTION_H__
 
 #include "Channel.h"
+#include "Buffer.h"
 #include <memory>
 #include <boost/function.hpp>
 #include "EventLoop.h"
 using std::shared_ptr;
 
-#define MAX_LINE 512
-
 class TcpConnection : public std::enable_shared_from_this<TcpConnection>
 {
 typedef boost::function<void (shared_ptr<TcpConnection>)> ConnectionCallback;
-typedef boost::function<void (shared_ptr<TcpConnection>)> MessageCallback;
+typedef boost::function<void (shared_ptr<TcpConnection>,Buffer*)> MessageCallback;
+typedef boost::function<void (shared_ptr<TcpConnection>)> WriteCompleteCallback;
 
 public:
 	TcpConnection(EventLoop* loop,int sockd);
@@ -34,30 +34,37 @@ public:
 			_messageCallback = cb; 
 		}
 
+	  void setWriteCompleteCallback(const WriteCompleteCallback& cb)
+	  {
+			_writeCompleteCallback = cb;
+	  }
+
 	void handleRead();
+	
+	void handleWrite();
 
 	shared_ptr<Channel> getChannel()
 	{
 		return _pChannel;
 	}
 
-	void send(const char*);
+	void send(Buffer*);
 
-	char* getInputBuffer()
-	{
-		return inputbuffer;
-	}
+	void send(const string&);
+
+	void sendInLoop(const void*,size_t len);
 
 private:
 	EventLoop* _loop;
 	int _sockfd;
 	shared_ptr<Channel> _pChannel;
 	
-	char inputbuffer[MAX_LINE];
-	char outputbuffer[MAX_LINE];
+	Buffer _inputBuffer;
+	Buffer _outputBuffer;
 
 	ConnectionCallback _connectionCallback;
 	MessageCallback   _messageCallback;
+	WriteCompleteCallback _writeCompleteCallback;
 };
 
 #endif

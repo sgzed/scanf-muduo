@@ -10,6 +10,7 @@
 #include <boost/function.hpp>
 #include <boost/noncopyable.hpp>
 #include <unistd.h>
+#include <sys/epoll.h>
 #include <fcntl.h>
 #include "EventLoop.h"
 
@@ -31,11 +32,25 @@ public:
 		_readCallback = cb;
 	}
 
+	void setWriteCallback(const EventCallback& cb)
+	{
+		_writeCallback = cb;
+	}
+
 	int getFd();
 
 	void handleEvent();
 
 	void enableReading();
+
+	void enableWriting();
+
+	void disableWriting();
+
+	bool isWriting()
+	{
+		return _events&EPOLLOUT;
+	}
 
 	void setRevent(int);
 
@@ -47,6 +62,7 @@ private:
 
 private:
 	EventCallback _readCallback;
+	EventCallback _writeCallback;
 };
 
 

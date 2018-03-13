@@ -25,12 +25,14 @@ class Acceptor;
 class TcpServer
 {
 typedef boost::function<void(Acceptor*)> ConnectionCallback;
-typedef boost::function<void(shared_ptr<TcpConnection>)> MessageCallback;
+typedef boost::function<void(shared_ptr<TcpConnection>,Buffer*)> MessageCallback;
+typedef boost::function<void (shared_ptr<TcpConnection>)> WriteCompleteCallback;
 
 public:
 	TcpServer(EventLoop* loop)
 		:_loop(loop),
-		_messageCallback(NULL)
+		_messageCallback(NULL),
+		 _writeCompleteCallback(NULL)
 	{
 	}
 
@@ -40,7 +42,12 @@ public:
 	void setConnectionCallback (const ConnectionCallback& cb);
 
 	void setMessageCallback(const MessageCallback& cb);
-				
+
+	void setWriteCompleteCallback(const WriteCompleteCallback& cb)
+	{
+		_writeCompleteCallback = cb;
+	}
+
 	void newConnection(int sockfd);
 
 	void start();
@@ -54,6 +61,7 @@ private:
 	shared_ptr<Acceptor> _acceptor;
 
 	MessageCallback _messageCallback;
+	WriteCompleteCallback _writeCompleteCallback;
 };
 
 

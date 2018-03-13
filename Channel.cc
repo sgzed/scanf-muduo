@@ -25,7 +25,8 @@ Channel::Channel(EventLoop* loop,int fd)
 	 _fd(fd),
 	 _events(0),
 	 _revents(0),
-	 _readCallback(NULL)
+	 _readCallback(NULL),
+	 _writeCallback(NULL)
 {
 
 }
@@ -50,11 +51,47 @@ void Channel::enableReading()
 	}
 }
 
+void Channel::enableWriting()
+{
+	_events |= EPOLLOUT;
+
+	struct epoll_event event;
+	event.data.ptr = this;
+	event.events = _events;
+	int ret = epoll_ctl(_loop->getEpollFd(),EPOLL_CTL_ADD,_fd,&event);
+	if(ret < 0)
+	{
+		cout << "fd " << _fd << endl;
+		perror("epoll_ctl");
+	}
+}
+
 void Channel::handleEvent()
 {
 	if(_revents&EPOLLIN)
 	{
 		_readCallback();
+	}
+
+	if(_revents&EPOLLOUT)
+	{
+		if(_writeCallback)
+			_writeCallback();
+	}
+}
+
+void Channel::disableWriting()
+{
+	_events &= ~EPOLLOUT;
+
+	struct epoll_event event;
+	event.data.ptr = this;
+	event.events = _events;
+	int ret = epoll_ctl(_loop->getEpollFd(),EPOLL_CTL_MOD,_fd,&event);
+	if(ret < 0)
+	{
+		cout << "fd " << _fd << endl;
+		perror("epoll_ctl");
 	}
 }
 
