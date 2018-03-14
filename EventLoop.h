@@ -8,6 +8,7 @@
 #define _WD_EVENTLOOP_H__
 #include "Channel.h"
 #include "Epoller.h"
+#include "Mutex.h"
 #include <boost/function.hpp>
 #include <boost/scoped_ptr.hpp>
 #include <vector>
@@ -28,11 +29,30 @@ public:
 
 	int getEpollFd();
 
+	void doPendingFunctors();
+
+	void runInLoop(const Functor& cb);
+
+	void queueInLoop(const Functor& cb);
+
+	void wakeup();
+
+private:
+	void handleRead();
+
 private:
 	bool _looping;
 	bool _quit;
+	bool _callingPendingFunctors;
+
+	int _wakeupFd;
+	boost::scoped_ptr<Channel> _wakeupChannel;
+
 	//map<int,Channel*> _channels;
 	vector<Channel*> _activeChannels; 
+
+	mutable MutexLock _mutex;	
+	vector<Functor> _pendingFunctors;	
 
 public:
 	boost::scoped_ptr<Epoll> _poller;

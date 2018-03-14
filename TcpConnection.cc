@@ -81,7 +81,7 @@ void TcpConnection::sendInLoop(const void* data,size_t len)
 		{
 			remaining = len - nwrote;
 			if(remaining==0 && _writeCompleteCallback)
-				_writeCompleteCallback(shared_from_this());
+				_loop->queueInLoop(boost::bind(_writeCompleteCallback,shared_from_this()));
 		}
 		else // nwrote <0
 		{
@@ -92,7 +92,7 @@ void TcpConnection::sendInLoop(const void* data,size_t len)
 
 	if(remaining > 0 )
 	{
-		size_t oldLen = _outputBuffer.readableBytes();
+		//size_t oldLen = _outputBuffer.readableBytes();
 		
 		_outputBuffer.append(static_cast<const char*>(data),remaining);
 		
@@ -115,6 +115,10 @@ void TcpConnection::handleWrite()
 			if(_outputBuffer.readableBytes()==0)
 			{
 				_pChannel->disableWriting();
+				if(_writeCompleteCallback)
+				{
+					_loop->queueInLoop(boost::bind(_writeCompleteCallback,shared_from_this()));
+				}
 			}
 		}
 		else
