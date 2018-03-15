@@ -9,6 +9,8 @@
 #include "Channel.h"
 #include "Epoller.h"
 #include "Mutex.h"
+#include "Timestamp.h"
+#include "TimerQueue.h"
 #include <boost/function.hpp>
 #include <boost/scoped_ptr.hpp>
 #include <vector>
@@ -16,10 +18,13 @@ using std::vector;
 
 class Channel;
 class Epoll;
+class Timer;
+class TimerQueue;
 
 class EventLoop
 {
 typedef boost::function<void()> Functor;
+typedef boost::function<void()> TimerCallback;
 
 public:
 	EventLoop();
@@ -37,6 +42,15 @@ public:
 
 	void wakeup();
 
+	void quit();
+
+	Timer* runAt(const Timestamp& time,const TimerCallback& cb);
+	
+	Timer* runAfter(double delay,const TimerCallback& cb);
+
+	Timer* runEvery(double interval,const TimerCallback& cb);
+
+	void cancel(Timer* timer);
 private:
 	void handleRead();
 
@@ -44,9 +58,6 @@ private:
 	bool _looping;
 	bool _quit;
 	bool _callingPendingFunctors;
-
-	int _wakeupFd;
-	boost::scoped_ptr<Channel> _wakeupChannel;
 
 	//map<int,Channel*> _channels;
 	vector<Channel*> _activeChannels; 
@@ -56,6 +67,9 @@ private:
 
 public:
 	boost::scoped_ptr<Epoll> _poller;
+	int _wakeupFd;
+	std::shared_ptr<Channel> _wakeupChannel;
+	boost::scoped_ptr<TimerQueue> _timerQueue;
 };
 
 #endif

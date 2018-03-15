@@ -27,13 +27,21 @@ EventLoop::EventLoop():
 	_looping(false),
 	_quit(false),
 	_callingPendingFunctors(false),
+	_poller(new Epoll()),
 	_wakeupFd(createEventFd()),
 	_wakeupChannel(new Channel(this,_wakeupFd)),
-	_poller(new Epoll())
+	_timerQueue(new TimerQueue(this))
 {
 	cout << "EventLoop create " << endl;
 
+	cout << "wakeup fd:" << _wakeupFd << endl;
+
+	cout << "timerfd:" << _timerQueue->getTimerfd() << endl;
+
 	_wakeupChannel->setReadCallback(boost::bind(&EventLoop::handleRead,this));
+
+	auto& iter=_poller->getChannels();
+	iter[_wakeupFd] = _wakeupChannel;
 
 	_wakeupChannel->enableReading();
 }
@@ -45,6 +53,10 @@ void EventLoop::handleRead()
 	if(n!=sizeof one)
 	{
 		cout << "EventLoop::handleRead() reads " << n << " bytes instead of 8" << endl; 
+	}
+	else
+	{
+		cout << "tiggered wakeupfd" << endl;
 	}
 }
 
@@ -72,8 +84,8 @@ void EventLoop::loop()
 		{
 			iter->handleEvent();	
 		}
+		doPendingFunctors();	
 	}
-	doPendingFunctors();	
 }
 
 void EventLoop::update(std::shared_ptr<Channel> channel)
@@ -91,7 +103,7 @@ void EventLoop::doPendingFunctors()
 
 		functors.swap(_pendingFunctors);
 	}
-
+	
 	for(size_t i=0;i<functors.size();++i)
 	{
 		functors[i]();
@@ -111,7 +123,7 @@ void EventLoop::queueInLoop(const Functor& cb)
 		_pendingFunctors.push_back(cb);
 	}
 
-	if(_callingPendingFunctors)
+//	if(_callingPendingFunctors)
 	  wakeup();
 }
 
@@ -126,11 +138,28 @@ void EventLoop::wakeup()
 	}
 }
 
+void EventLoop::quit()
+{
+	_quit = true;
+	wakeup();
+}
 
+Timer* EventLoop::runAt(const Timestamp& time,const TimerCallback& cb)
+{
+	return _timerQueue->addTimer(cb,time,0.0);
+}
 
+Timer* EventLoop::runAfter(double delay,const TimerCallback& cb)
+{
+	Timestamp time(Timestamp::nowAfter(delay));
 
+	return runAt(time,cb);
+}
 
-
+Timer* EventLoop::runEvery(double interval,const TimerCallback& cb)
+{
+	return _timerQueue->addTimer(cb,Timestamp::now(),interval);	
+}
 
 
 

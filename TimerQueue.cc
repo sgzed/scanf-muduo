@@ -46,7 +46,7 @@ void readTimerfd(int timerfd,Timestamp now)
 {
 	uint64_t howmany;
 	ssize_t n= ::read(timerfd,&howmany,sizeof(howmany));
-	cout << "TimeQueu::handleRead() " << howmany << " at " << now.toString();
+	cout << "TimeQueu::handleRead() " << howmany << " at " << now.toString() << endl;
 
 	if(n!=sizeof howmany)
 	{
@@ -80,6 +80,14 @@ TimerQueue::TimerQueue(EventLoop* loop)
 	_timerfdChannel(new Channel(_loop,_timerfd)),
 	_timers()	
 {
+	if(_timerfd < 0)
+	{
+		cout << "createTimerfd failed" << endl;
+	}
+	
+	auto& iter =_loop->_poller->getChannels();
+	iter[_timerfd] = _timerfdChannel;
+
 	_timerfdChannel->setReadCallback(boost::bind(&TimerQueue::handleRead,this));
 	_timerfdChannel->enableReading();
 }
@@ -95,6 +103,7 @@ TimerQueue::~TimerQueue()
 void TimerQueue::handleRead()
 {
 	Timestamp now(Timestamp::now());
+
 	readTimerfd(_timerfd,now);
 
 	vector<Entry> expired = getExpired(now);

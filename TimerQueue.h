@@ -41,6 +41,11 @@ public:
 
 	void cancel(Timer* timer);
 
+	int getTimerfd()
+	{
+		return _timerfd;
+	}
+
 private:
 	void addTimerInLoop(Timer* timer);
 
@@ -53,7 +58,7 @@ private:
 private:
 	EventLoop * _loop;
 	const int _timerfd;
-	boost::scoped_ptr<Channel> _timerfdChannel;
+	std::shared_ptr<Channel> _timerfdChannel;
 	TimerList _timers;
 };
 
