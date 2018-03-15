@@ -32,6 +32,6 @@ void onMessage(shared_ptr<TcpConnection> pconn,Buffer* buffer)
 {
 	string msg(buffer->retrieveAllAsString());
 
-	cout << pconn->getChannel()->getFd() << " echo " << msg.size() << " bytes" << endl;
+	cout << "fd:" << pconn->getChannel()->getFd() << " echo " << msg.size() << " bytes" << endl;
 	pconn->send(msg);
 }
