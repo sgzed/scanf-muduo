@@ -7,9 +7,9 @@
 #ifndef __WD_MUTEX_H__
 #define __WD_MUTEX_H__
 
+#include "CurrentThread.h"
 #include <pthread.h>
 #include <assert.h>
-
 
 class MutexLock 
 {
@@ -25,8 +25,14 @@ public:
 		pthread_mutex_destroy(&_mutex);
 	}
 
+	bool isLockedByThisThread() const
+	{
+		return _holder==CurrentThread::tid();
+	}
+	
 	void assertLocked()
 	{
+		assert(isLockedByThisThread());
 	}
 
 	void lock()
@@ -77,6 +83,7 @@ private:
 
 	void assignHolder()
 	{
+		_holder = CurrentThread::tid();
 	}
 
 private:

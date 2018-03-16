@@ -27,6 +27,7 @@ EventLoop::EventLoop():
 	_looping(false),
 	_quit(false),
 	_callingPendingFunctors(false),
+	_threadId(CurrentThread::tid()),
 	_poller(new Epoll()),
 	_wakeupFd(createEventFd()),
 	_wakeupChannel(new Channel(this,_wakeupFd)),
@@ -113,7 +114,10 @@ void EventLoop::doPendingFunctors()
 
 void EventLoop::runInLoop(const Functor& cb)
 {
-	queueInLoop(cb);	
+	if(isInLoopThread())
+		cb();
+	else
+		queueInLoop(cb);	
 }
 
 void EventLoop::queueInLoop(const Functor& cb)
@@ -123,8 +127,8 @@ void EventLoop::queueInLoop(const Functor& cb)
 		_pendingFunctors.push_back(cb);
 	}
 
-//	if(_callingPendingFunctors)
-	  wakeup();
+	if(!isInLoopThread() || _callingPendingFunctors)
+		wakeup();
 }
 
 void EventLoop::wakeup()
@@ -161,5 +165,9 @@ Timer* EventLoop::runEvery(double interval,const TimerCallback& cb)
 	return _timerQueue->addTimer(cb,Timestamp::now(),interval);	
 }
 
-
-
+void EventLoop::abortNotInLoopThread()
+{
+	cout << "EventLoop::abortNotInLoopThread - EventLoop " << this
+		    << " was created in threadId_ = " << _threadId
+		<< ", current thread id = " <<  CurrentThread::tid();
+}

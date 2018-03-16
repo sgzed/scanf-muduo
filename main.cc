@@ -29,7 +29,7 @@ int main()
 
 	EventLoop loop;
 
-	TcpServer echo(&loop);
+	TcpServer echo(&loop,"echo");
 	echo.setMessageCallback(boost::bind(&onMessage,_1,_2));
 
 	loop.runEvery(2,boost::bind(&print,"once1"));

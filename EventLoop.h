@@ -7,6 +7,7 @@
 #ifndef _WD_EVENTLOOP_H__
 #define _WD_EVENTLOOP_H__
 #include "Channel.h"
+#include "CurrentThread.h"
 #include "Epoller.h"
 #include "Mutex.h"
 #include "Timestamp.h"
@@ -50,9 +51,21 @@ public:
 
 	Timer* runEvery(double interval,const TimerCallback& cb);
 
+	void assertInLoopThread()
+	{
+		if(!isInLoopThread())
+		{
+			abortNotInLoopThread();
+		}
+	}
+
+	bool isInLoopThread() {return _threadId==CurrentThread::tid();}
+
 	void cancel(Timer* timer);
 private:
 	void handleRead();
+
+	void abortNotInLoopThread();
 
 private:
 	bool _looping;
@@ -65,6 +78,7 @@ private:
 	mutable MutexLock _mutex;	
 	vector<Functor> _pendingFunctors;	
 
+	const pid_t _threadId;
 public:
 	boost::scoped_ptr<Epoll> _poller;
 	int _wakeupFd;

@@ -28,7 +28,7 @@ using std::vector;
 
 void TcpServer::setConnectionCallback(const ConnectionCallback& cb)
 {
-	//_acceptor.setReadCallback(boost::bind(cb,_acceptor));
+ //	_acceptor->setReadCallback(boost::bind(cb,_acceptor));
 }
 
 void TcpServer::setMessageCallback(const MessageCallback& cb)
@@ -42,6 +42,7 @@ void TcpServer::start()
 
 	_acceptor->start();
 
+	_threadPool->start(_threadInitCallback);
 	//_loop->loop();
 }
 
@@ -59,7 +60,11 @@ void TcpServer::newConnection(int connfd)
 
 }
 
-
+void TcpServer::setThreadNum(int numThreads)
+{
+	assert(0<= numThreads);
+	_threadPool->setThreadNum(numThreads);
+}
 
 
 
